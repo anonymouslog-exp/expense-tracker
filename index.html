@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker - Secure</title>
+    <title>Expense Tracker</title>
     <style>
         * {
             margin: 0;
@@ -31,13 +31,19 @@
 
         .login-container {
             max-width: 400px;
-            margin: 100px auto;
+            margin: 50px auto;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
             padding: 40px;
             text-align: center;
+        }
+
+        .login-container h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2em;
         }
 
         .header {
@@ -67,27 +73,57 @@
             color: white;
             border: none;
             padding: 8px 15px;
-            border-radius: 20px;
+            border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
-            transition: background 0.3s ease;
         }
 
         .logout-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
 
-        .user-info {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
-        }
-
         .main-content {
             padding: 30px;
         }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card.expenses { border-left-color: #f44336; }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card .amount {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .expenses .amount { color: #f44336; }
 
         .form-section {
             background: white;
@@ -157,73 +193,8 @@
             transform: translateY(0);
         }
 
-        .login-form h2 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2em;
-        }
-
-        .login-form .form-group {
-            margin-bottom: 20px;
-        }
-
-        .error-message {
-            color: #f44336;
-            text-align: center;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-        .cloud-status {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        .cloud-status.error {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            border-left: 5px solid;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .card.expenses { border-left-color: #f44336; }
-
-        .card h3 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .card .amount {
-            font-size: 2.2em;
-            font-weight: bold;
-            color: #f44336;
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #ff6b6b 100%);
         }
 
         .transactions {
@@ -279,6 +250,9 @@
             font-weight: bold;
             font-size: 1.1em;
             margin-right: 10px;
+        }
+
+        .transaction-amount.expense {
             color: #f44336;
         }
 
@@ -347,14 +321,20 @@
             padding: 20px;
         }
 
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
         @media (max-width: 768px) {
-            .container {
+            .container, .login-container {
                 margin: 10px;
                 border-radius: 15px;
-            }
-
-            .login-container {
-                margin: 50px 10px;
             }
 
             .header {
@@ -378,57 +358,61 @@
                 align-items: flex-start;
                 gap: 10px;
             }
-
-            .logout-btn, .user-info {
+            
+            .logout-btn {
                 position: static;
                 margin-top: 10px;
+                width: 100px;
             }
-        }
-
-        .hidden {
-            display: none;
         }
     </style>
 </head>
 <body>
     <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
-        <div class="login-form">
-            <h2>🔐 Secure Login</h2>
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" placeholder="Enter your username">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password">
-            </div>
-            <button class="btn" onclick="login()">Login</button>
-            <div id="loginError" class="error-message hidden"></div>
-            
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666;">
-                <strong>Demo Credentials:</strong><br>
-                Username: <code>admin</code><br>
-                Password: <code>password123</code>
-            </div>
+        <h1>🔐 Login</h1>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Enter your email" required>
         </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password" required>
+        </div>
+        <button class="btn" onclick="login()">Login</button>
+        <p style="margin-top: 15px; font-size: 14px; color: #666;">
+            Don't have an account? <a href="#" onclick="showSignup()" style="color: #4facfe;">Sign up</a>
+        </p>
+        <div id="loginLoading" class="loading hidden">Logging in...</div>
     </div>
 
-    <!-- Main App (Hidden initially) -->
+    <!-- Signup Screen -->
+    <div id="signupScreen" class="login-container hidden">
+        <h1>📝 Sign Up</h1>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label for="signupPassword">Password</label>
+            <input type="password" id="signupPassword" placeholder="Create a password (min 6 characters)" required>
+        </div>
+        <button class="btn" onclick="signup()">Create Account</button>
+        <p style="margin-top: 15px; font-size: 14px; color: #666;">
+            Already have an account? <a href="#" onclick="showLogin()" style="color: #4facfe;">Login</a>
+        </p>
+        <div id="signupLoading" class="loading hidden">Creating account...</div>
+    </div>
+
+    <!-- Main App -->
     <div id="mainApp" class="container hidden">
         <div class="header">
-            <button class="logout-btn" onclick="logout()">Logout</button>
-            <div class="user-info">Welcome, <span id="currentUser"></span></div>
             <h1>💰 Expense Tracker</h1>
             <p>Track and analyze your spending patterns with smart categorization</p>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
         <div class="main-content">
-            <!-- Cloud Sync Status -->
-            <div id="cloudStatus" class="cloud-status">
-                ☁️ Data synced to cloud database - accessible from any device
-            </div>
-
             <!-- Category Summary Section -->
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
@@ -524,22 +508,16 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                     <h2>Recent Expenses</h2>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn" onclick="exportToCSV()" style="padding: 8px 15px; font-size: 14px;">
+                        <button class="btn" onclick="exportToCSV()" style="padding: 8px 15px; font-size: 14px; width: auto;">
                             📄 Export CSV
                         </button>
-                        <button class="btn" onclick="exportToExcel()" style="padding: 8px 15px; font-size: 14px;">
+                        <button class="btn" onclick="exportToExcel()" style="padding: 8px 15px; font-size: 14px; width: auto;">
                             📊 Export Excel
-                        </button>
-                        <button class="btn" onclick="importData()" style="padding: 8px 15px; font-size: 14px;">
-                            📂 Import Data
                         </button>
                     </div>
                 </div>
-                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileImport(event)">
                 <div class="transaction-list" id="transactionList">
-                    <div class="empty-state">
-                        <p>No expenses yet. Add your first expense above!</p>
-                    </div>
+                    <div class="loading">Loading expenses...</div>
                 </div>
             </div>
         </div>
@@ -547,18 +525,16 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Authentication and user management
+        // REPLACE WITH YOUR SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://bdpmbvjirurjredngoxq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA';
+        
+        let supabase;
         let currentUser = null;
         let transactions = [];
         let expenseChart = null;
-
-        // User credentials (In real app, this should be in a secure backend)
-        const users = {
-            'anonymous': 'cqIrflpRRE42xlR',
-            'user1': 'mypassword',
-            'demo': 'demo123'
-        };
 
         const categoryColors = {
             'Food & Dine': '#FF6B6B',
@@ -573,120 +549,173 @@
             'Vacation': '#85C1E9'
         };
 
-        // Check if user is already logged in
-        function checkAuthStatus() {
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = savedUser;
-                showMainApp();
-            } else {
-                showLoginScreen();
+        // Initialize Supabase
+        function initSupabase() {
+            if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') {
+                alert('Please configure your Supabase credentials first!');
+                return false;
             }
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            return true;
         }
 
-        function login() {
-            const username = document.getElementById('username').value.trim();
+        // Authentication functions
+        async function login() {
+            if (!initSupabase()) return;
+            
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('loginError');
-
-            if (!username || !password) {
-                showError('Please enter both username and password');
+            
+            if (!email || !password) {
+                alert('Please enter both email and password');
                 return;
             }
-
-            if (users[username] && users[username] === password) {
-                currentUser = username;
-                localStorage.setItem('currentUser', username);
-                hideError();
+            
+            document.getElementById('loginLoading').classList.remove('hidden');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                
+                currentUser = data.user;
                 showMainApp();
-                loadUserData();
-            } else {
-                showError('Invalid username or password');
+                await loadExpenses();
+            } catch (error) {
+                alert('Login failed: ' + error.message);
+            } finally {
+                document.getElementById('loginLoading').classList.add('hidden');
             }
         }
 
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                currentUser = null;
-                localStorage.removeItem('currentUser');
-                transactions = [];
-                showLoginScreen();
+        async function signup() {
+            if (!initSupabase()) return;
+            
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long');
+                return;
+            }
+            
+            document.getElementById('signupLoading').classList.remove('hidden');
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                
+                alert('Account created successfully! Please check your email to confirm your account, then login.');
+                showLogin();
+            } catch (error) {
+                alert('Signup failed: ' + error.message);
+            } finally {
+                document.getElementById('signupLoading').classList.add('hidden');
             }
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('loginError');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
+        async function logout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            transactions = [];
+            showLogin();
         }
 
-        function hideError() {
-            const errorDiv = document.getElementById('loginError');
-            errorDiv.classList.add('hidden');
-        }
-
-        function showLoginScreen() {
+        function showLogin() {
             document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('signupScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.add('hidden');
-            // Clear form
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+        }
+
+        function showSignup() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('signupScreen').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
         }
 
         function showMainApp() {
             document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('signupScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
-            document.getElementById('currentUser').textContent = currentUser;
-            updateCloudStatus();
+            initializeApp();
         }
 
-        function updateCloudStatus() {
-            const statusDiv = document.getElementById('cloudStatus');
-            statusDiv.innerHTML = `☁️ Logged in as <strong>${currentUser}</strong> - Data synced across all your devices`;
-        }
-
-        // Data management with user-specific storage
-        function getUserStorageKey() {
-            return `expenseTransactions_${currentUser}`;
-        }
-
-        function loadUserData() {
+        // Database functions
+        async function loadExpenses() {
+            if (!currentUser) return;
+            
             try {
-                const savedTransactions = localStorage.getItem(getUserStorageKey());
-                if (savedTransactions) {
-                    transactions = JSON.parse(savedTransactions);
-                    console.log(`Data loaded for user ${currentUser}, transactions:`, transactions.length);
-                } else {
-                    transactions = [];
-                    console.log(`No saved data for user ${currentUser}, starting fresh`);
-                }
+                const { data, error } = await supabase
+                    .from('expenses')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('date', { ascending: false });
+                
+                if (error) throw error;
+                
+                transactions = data || [];
                 updateDisplay();
             } catch (error) {
-                console.error('Error loading user data:', error);
-                transactions = [];
-                updateDisplay();
+                console.error('Error loading expenses:', error);
+                alert('Error loading expenses: ' + error.message);
             }
         }
 
-        function saveUserData() {
+        async function saveExpense(expense) {
+            if (!currentUser) return;
+            
             try {
-                localStorage.setItem(getUserStorageKey(), JSON.stringify(transactions));
-                console.log(`Data saved for user ${currentUser}`);
-                updateCloudStatus();
+                const { data, error } = await supabase
+                    .from('expenses')
+                    .insert([{
+                        user_id: currentUser.id,
+                        description: expense.description,
+                        amount: expense.amount,
+                        category: expense.category,
+                        date: expense.date
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                return data[0];
             } catch (error) {
-                console.error('Error saving user data:', error);
-                const statusDiv = document.getElementById('cloudStatus');
-                statusDiv.innerHTML = '❌ Error saving data - Storage may be full';
-                statusDiv.classList.add('error');
+                console.error('Error saving expense:', error);
+                throw error;
             }
         }
 
-        function addExpense() {
-            if (!currentUser) {
-                alert('Please log in first');
-                return;
+        async function deleteExpense(id) {
+            if (!currentUser) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('expenses')
+                    .delete()
+                    .eq('id', id)
+                    .eq('user_id', currentUser.id);
+                
+                if (error) throw error;
+            } catch (error) {
+                console.error('Error deleting expense:', error);
+                throw error;
             }
+        }
 
+        // Expense management functions
+        async function addExpense() {
             const description = document.getElementById('description').value.trim();
             const amount = parseFloat(document.getElementById('amount').value);
             const category = document.getElementById('category').value;
@@ -715,34 +744,32 @@
 
             try {
                 const expense = {
-                    id: Date.now() + Math.random(),
                     description: description,
                     amount: parseFloat(amount.toFixed(2)),
-                    type: 'expense',
                     category: category,
-                    date: expenseDate + 'T00:00:00.000Z',
-                    user: currentUser,
-                    created: new Date().toISOString()
+                    date: expenseDate + 'T00:00:00.000Z'
                 };
 
-                transactions.unshift(expense);
-                saveUserData();
+                const savedExpense = await saveExpense(expense);
+                transactions.unshift(savedExpense);
                 updateDisplay();
                 clearForm();
                 
-                console.log('Expense added successfully:', expense);
+                console.log('Expense added successfully:', savedExpense);
             } catch (error) {
                 console.error('Error adding expense:', error);
                 alert('Error adding expense. Please try again.');
             }
         }
 
-        function deleteTransaction(id) {
-            if (!currentUser) return;
-            
-            transactions = transactions.filter(t => t.id !== id);
-            saveUserData();
-            updateDisplay();
+        async function deleteTransaction(id) {
+            try {
+                await deleteExpense(id);
+                transactions = transactions.filter(t => t.id !== id);
+                updateDisplay();
+            } catch (error) {
+                alert('Error deleting expense. Please try again.');
+            }
         }
 
         function clearForm() {
@@ -750,23 +777,22 @@
             document.getElementById('amount').value = '';
             document.getElementById('category').value = 'Food & Dine';
             document.getElementById('expenseDate').value = '';
+            setDefaultDate();
         }
 
+        // Display and filtering functions
         function populateYearOptions() {
             const yearSelect = document.getElementById('yearSelect');
             const currentYear = new Date().getFullYear();
             const years = new Set();
             
-            // Add current year
             years.add(currentYear);
             
-            // Add years from transactions
             transactions.forEach(transaction => {
                 const year = new Date(transaction.date).getFullYear();
                 years.add(year);
             });
             
-            // Convert to sorted array
             const sortedYears = Array.from(years).sort((a, b) => b - a);
             
             yearSelect.innerHTML = sortedYears.map(year => 
@@ -790,12 +816,7 @@
         }
 
         function updateDisplay() {
-            if (!currentUser) return;
-
-            const totalExpenses = transactions
-                .filter(t => t.type === 'expense')
-                .reduce((sum, t) => sum + t.amount, 0);
-
+            const totalExpenses = transactions.reduce((sum, t) => sum + t.amount, 0);
             document.getElementById('totalExpenses').textContent = `₹${totalExpenses.toFixed(2)}`;
 
             updateTransactionList();
@@ -819,7 +840,7 @@
                         <span style="margin-left: 10px; font-size: 0.9em; color: #666;">${new Date(transaction.date).toLocaleDateString()}</span>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <div class="transaction-amount">
+                        <div class="transaction-amount expense">
                             -₹${transaction.amount.toFixed(2)}
                         </div>
                         <button class="delete-btn" onclick="deleteTransaction(${transaction.id})">Delete</button>
@@ -849,23 +870,18 @@
 
         function updateCategorySummary() {
             const filteredTransactions = getFilteredTransactions();
-            const expenseTransactions = filteredTransactions.filter(t => t.type === 'expense');
-            
             const categorySummary = {};
             
-            // Initialize all categories with 0
             Object.keys(categoryColors).forEach(category => {
                 categorySummary[category] = 0;
             });
             
-            // Calculate totals for each category
-            expenseTransactions.forEach(transaction => {
+            filteredTransactions.forEach(transaction => {
                 if (categorySummary.hasOwnProperty(transaction.category)) {
                     categorySummary[transaction.category] += transaction.amount;
                 }
             });
             
-            // Filter out categories with no expenses
             const nonZeroCategories = Object.entries(categorySummary)
                 .filter(([category, amount]) => amount > 0)
                 .sort((a, b) => b[1] - a[1]);
@@ -875,248 +891,3 @@
             if (nonZeroCategories.length === 0) {
                 summaryContainer.innerHTML = '<div class="no-data">No expenses recorded for this period</div>';
                 updateChart([], []);
-                return;
-            }
-            
-            summaryContainer.innerHTML = nonZeroCategories.map(([category, amount]) => `
-                <div class="category-item" style="border-left-color: ${categoryColors[category]}">
-                    <div class="category-name">${category}</div>
-                    <div class="category-amount">₹${amount.toFixed(2)}</div>
-                </div>
-            `).join('');
-            
-            const labels = nonZeroCategories.map(([category]) => category);
-            const data = nonZeroCategories.map(([, amount]) => amount);
-            updateChart(labels, data);
-        }
-
-        function updateChart(labels, data) {
-            const ctx = document.getElementById('expenseChart').getContext('2d');
-            
-            if (expenseChart) {
-                expenseChart.destroy();
-            }
-            
-            if (labels.length === 0) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.fillStyle = '#666';
-                ctx.font = '16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('No data to display', ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
-            }
-            
-            const colors = labels.map(label => categoryColors[label]);
-            
-            expenseChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true,
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const total = data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
-                                    return `${context.label}: ₹${context.parsed.toFixed(2)} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Export functions
-        function exportToCSV() {
-            if (transactions.length === 0) {
-                alert('No data to export');
-                return;
-            }
-
-            const headers = ['Date', 'Description', 'Category', 'Amount'];
-            const csvData = transactions.map(t => [
-                new Date(t.date).toLocaleDateString(),
-                t.description,
-                t.category,
-                t.amount
-            ]);
-
-            const csvContent = [headers, ...csvData]
-                .map(row => row.map(field => `"${field}"`).join(','))
-                .join('\n');
-
-            downloadFile(csvContent, `expense-data-${currentUser}.csv`, 'text/csv');
-        }
-
-        function exportToExcel() {
-            if (transactions.length === 0) {
-                alert('No data to export');
-                return;
-            }
-
-            const worksheetData = transactions.map(t => ({
-                'Date': new Date(t.date).toLocaleDateString(),
-                'Description': t.description,
-                'Category': t.category,
-                'Amount': t.amount
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Expenses');
-            
-            XLSX.writeFile(workbook, `expense-data-${currentUser}.xlsx`);
-        }
-
-        function downloadFile(content, filename, contentType) {
-            const blob = new Blob([content], { type: contentType });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        }
-
-        function importData() {
-            document.getElementById('fileInput').click();
-        }
-
-        function handleFileImport(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    let importedData = [];
-                    
-                    if (file.name.endsWith('.csv')) {
-                        const csv = e.target.result;
-                        const lines = csv.split('\n');
-                        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-                        
-                        for (let i = 1; i < lines.length; i++) {
-                            if (lines[i].trim()) {
-                                const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-                                if (values.length >= 4) {
-                                    importedData.push({
-                                        id: Date.now() + Math.random() + i,
-                                        date: new Date(values[0]).toISOString(),
-                                        description: values[1],
-                                        category: values[2],
-                                        amount: parseFloat(values[3]),
-                                        type: 'expense',
-                                        user: currentUser,
-                                        created: new Date().toISOString()
-                                    });
-                                }
-                            }
-                        }
-                    } else {
-                        // Excel file
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const sheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                        
-                        importedData = jsonData.map((row, i) => ({
-                            id: Date.now() + Math.random() + i,
-                            date: new Date(row.Date || row.date).toISOString(),
-                            description: row.Description || row.description || '',
-                            category: row.Category || row.category || 'Miscellaneous',
-                            amount: parseFloat(row.Amount || row.amount || 0),
-                            type: 'expense',
-                            user: currentUser,
-                            created: new Date().toISOString()
-                        }));
-                    }
-                    
-                    if (importedData.length > 0) {
-                        const validData = importedData.filter(item => 
-                            item.description && item.amount > 0 && item.category
-                        );
-                        
-                        if (confirm(`Import ${validData.length} expense records? This will add to your existing data.`)) {
-                            transactions = [...validData, ...transactions];
-                            saveUserData();
-                            updateDisplay();
-                            alert(`Successfully imported ${validData.length} expenses!`);
-                        }
-                    } else {
-                        alert('No valid data found in the file');
-                    }
-                } catch (error) {
-                    console.error('Import error:', error);
-                    alert('Error importing file. Please check the format.');
-                }
-            };
-            
-            if (file.name.endsWith('.csv')) {
-                reader.readAsText(file);
-            } else {
-                reader.readAsArrayBuffer(file);
-            }
-        }
-
-        // Set today's date as default
-        function setDefaultDate() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('expenseDate').value = today;
-        }
-
-        // Initialize the app
-        function initializeApp() {
-            checkAuthStatus();
-            if (currentUser) {
-                updatePeriodOptions();
-                setDefaultDate();
-            }
-        }
-
-        // Handle Enter key on login form
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
-            
-            // Allow Enter key to login
-            document.getElementById('password').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    login();
-                }
-            });
-            
-            document.getElementById('username').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    document.getElementById('password').focus();
-                }
-            });
-        });
-    </script>
-</body>
-</html>
-
-

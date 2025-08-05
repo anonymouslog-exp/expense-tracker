@@ -572,13 +572,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        // Example format:
+        // const SUPABASE_URL = 'https://your-project-id.supabase.co';
+        // const SUPABASE_ANON_KEY = 'your-anon-key-here';
         const SUPABASE_URL = 'https://bdpmbvjirurjredngoxq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA';
         
-        let supabase;
+        let supabase = null;
         let currentUser = null;
         let transactions = [];
         let expenseChart = null;
+        let isSupabaseReady = false;
 
         const categoryColors = {
             'Food & Dine': '#FF6B6B',
@@ -595,21 +599,44 @@
 
         // Initialize app when page loads
         window.addEventListener('load', () => {
-            initializeApp();
+            // Wait a bit for Supabase to load
+            setTimeout(initializeApp, 100);
         });
 
         // Initialize Supabase and check auth state
         function initializeApp() {
+            console.log('Initializing app...');
+            
+            // Check if Supabase is loaded
+            if (typeof window.supabase === 'undefined') {
+                console.error('Supabase library not loaded');
+                showMessage('loginMessage', 'Error: Unable to load database connection library. Please refresh the page.', 'error');
+                return;
+            }
+
+            // Check if credentials are configured
             if (SUPABASE_URL === 'https://bdpmbvjirurjredngoxq.supabase.co' || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA') {
                 console.error('Supabase credentials not configured');
+                showMessage('loginMessage', 'Database not configured. Please set up your Supabase credentials.', 'error');
                 return;
             }
 
             try {
+                console.log('Creating Supabase client...');
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
+                if (!supabase || !supabase.auth) {
+                    throw new Error('Failed to create Supabase client');
+                }
+                
+                isSupabaseReady = true;
+                console.log('Supabase client created successfully');
+                
                 // Hide setup warning
-                document.getElementById('setupWarning').style.display = 'none';
+                const setupWarning = document.getElementById('setupWarning');
+                if (setupWarning) {
+                    setupWarning.style.display = 'none';
+                }
                 
                 // Check if user is already logged in
                 checkAuthState();
@@ -619,6 +646,7 @@
                 
                 // Listen for auth changes
                 supabase.auth.onAuthStateChange((event, session) => {
+                    console.log('Auth state changed:', event, session?.user?.email || 'no user');
                     if (event === 'SIGNED_IN' && session) {
                         currentUser = session.user;
                         showMainApp();
@@ -632,18 +660,34 @@
                 
             } catch (error) {
                 console.error('Error initializing Supabase:', error);
-                showMessage('loginMessage', 'Error connecting to database. Please check your Supabase configuration.', 'error');
+                showMessage('loginMessage', 'Error connecting to database: ' + error.message, 'error');
+                isSupabaseReady = false;
             }
         }
 
         async function checkAuthState() {
+            if (!isSupabaseReady || !supabase) {
+                showLogin();
+                return;
+            }
+
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
+                console.log('Checking auth state...');
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Error getting session:', error);
+                    showLogin();
+                    return;
+                }
+
+                if (session && session.user) {
+                    console.log('User already logged in:', session.user.email);
                     currentUser = session.user;
                     showMainApp();
                     await loadExpenses();
                 } else {
+                    console.log('No active session');
                     showLogin();
                 }
             } catch (error) {
@@ -654,6 +698,11 @@
 
         // Authentication functions
         async function login() {
+            if (!isSupabaseReady || !supabase) {
+                showMessage('loginMessage', 'Database connection not ready. Please refresh the page.', 'error');
+                return;
+            }
+
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
@@ -667,19 +716,34 @@
             loginBtn.textContent = 'Logging in...';
             
             try {
+                console.log('Attempting login for:', email);
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Login error:', error);
+                    throw error;
+                }
                 
+                console.log('Login successful:', data.user?.email);
                 clearMessage('loginMessage');
                 // Auth state change will handle the rest
                 
             } catch (error) {
-                console.error('Login error:', error);
-                showMessage('loginMessage', 'Login failed: ' + error.message, 'error');
+                console.error('Login failed:', error);
+                let errorMessage = 'Login failed: ';
+                
+                if (error.message.includes('Invalid login credentials')) {
+                    errorMessage += 'Invalid email or password';
+                } else if (error.message.includes('Email not confirmed')) {
+                    errorMessage += 'Please confirm your email address before logging in';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showMessage('loginMessage', errorMessage, 'error');
             } finally {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
@@ -687,6 +751,11 @@
         }
 
         async function signup() {
+            if (!isSupabaseReady || !supabase) {
+                showMessage('signupMessage', 'Database connection not ready. Please refresh the page.', 'error');
+                return;
+            }
+
             const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
             
@@ -705,12 +774,18 @@
             signupBtn.textContent = 'Creating Account...';
             
             try {
+                console.log('Attempting signup for:', email);
                 const { data, error } = await supabase.auth.signUp({
                     email: email,
                     password: password
                 });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Signup error:', error);
+                    throw error;
+                }
+                
+                console.log('Signup successful:', data);
                 
                 if (data.user && !data.user.email_confirmed_at) {
                     showMessage('signupMessage', 'Account created! Please check your email to confirm your account, then login.', 'success');
@@ -723,8 +798,16 @@
                 document.getElementById('signupPassword').value = '';
                 
             } catch (error) {
-                console.error('Signup error:', error);
-                showMessage('signupMessage', 'Signup failed: ' + error.message, 'error');
+                console.error('Signup failed:', error);
+                let errorMessage = 'Signup failed: ';
+                
+                if (error.message.includes('already registered')) {
+                    errorMessage += 'An account with this email already exists';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showMessage('signupMessage', errorMessage, 'error');
             } finally {
                 signupBtn.disabled = false;
                 signupBtn.textContent = 'Create Account';
@@ -732,7 +815,12 @@
         }
 
         async function logout() {
+            if (!isSupabaseReady || !supabase) {
+                return;
+            }
+
             try {
+                console.log('Logging out...');
                 await supabase.auth.signOut();
                 // Auth state change will handle the rest
             } catch (error) {
@@ -781,16 +869,20 @@
 
         // Database functions
         async function loadExpenses() {
-            if (!currentUser) return;
+            if (!currentUser || !isSupabaseReady || !supabase) return;
             
             try {
+                console.log('Loading expenses for user:', currentUser.id);
                 const { data, error } = await supabase
                     .from('expenses')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .order('date', { ascending: false });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database error:', error);
+                    throw error;
+                }
                 
                 transactions = data || [];
                 updateDisplay();
@@ -798,14 +890,20 @@
                 
             } catch (error) {
                 console.error('Error loading expenses:', error);
-                alert('Error loading expenses: ' + error.message);
+                
+                if (error.message.includes('relation "expenses" does not exist')) {
+                    alert('Database table not found. Please create the expenses table in your Supabase database.');
+                } else {
+                    alert('Error loading expenses: ' + error.message);
+                }
             }
         }
 
         async function saveExpense(expense) {
-            if (!currentUser) return;
+            if (!currentUser || !isSupabaseReady || !supabase) return;
             
             try {
+                console.log('Saving expense:', expense);
                 const { data, error } = await supabase
                     .from('expenses')
                     .insert([{
@@ -817,8 +915,12 @@
                     }])
                     .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database error:', error);
+                    throw error;
+                }
                 
+                console.log('Expense saved:', data[0]);
                 return data[0];
             } catch (error) {
                 console.error('Error saving expense:', error);
@@ -827,16 +929,22 @@
         }
 
         async function deleteExpense(id) {
-            if (!currentUser) return;
+            if (!currentUser || !isSupabaseReady || !supabase) return;
             
             try {
+                console.log('Deleting expense:', id);
                 const { error } = await supabase
                     .from('expenses')
                     .delete()
                     .eq('id', id)
                     .eq('user_id', currentUser.id);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database error:', error);
+                    throw error;
+                }
+                
+                console.log('Expense deleted successfully');
             } catch (error) {
                 console.error('Error deleting expense:', error);
                 throw error;

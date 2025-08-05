@@ -193,6 +193,12 @@
             transform: translateY(0);
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-danger {
             background: linear-gradient(135deg, #f44336 0%, #ff6b6b 100%);
         }
@@ -331,6 +337,33 @@
             color: #666;
         }
 
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .setup-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px;
+            border: 1px solid #ffeaa7;
+        }
+
         @media (max-width: 768px) {
             .container, .login-container {
                 margin: 10px;
@@ -368,9 +401,21 @@
     </style>
 </head>
 <body>
+    <!-- Setup Warning -->
+    <div id="setupWarning" class="setup-warning">
+        <h3>⚠️ Setup Required</h3>
+        <p>Please configure your Supabase credentials in the JavaScript section below. You'll need to:</p>
+        <ol style="margin: 10px 0; padding-left: 20px;">
+            <li>Create a Supabase project at <a href="https://supabase.com" target="_blank">supabase.com</a></li>
+            <li>Create an 'expenses' table with the required columns</li>
+            <li>Replace the placeholder URLs with your actual Supabase credentials</li>
+        </ol>
+    </div>
+
     <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
         <h1>🔐 Login</h1>
+        <div id="loginMessage"></div>
         <div class="form-group" style="margin-bottom: 15px;">
             <label for="email">Email</label>
             <input type="email" id="email" placeholder="Enter your email" required>
@@ -379,16 +424,16 @@
             <label for="password">Password</label>
             <input type="password" id="password" placeholder="Enter your password" required>
         </div>
-        <button class="btn" onclick="login()">Login</button>
+        <button class="btn" id="loginBtn" onclick="login()">Login</button>
         <p style="margin-top: 15px; font-size: 14px; color: #666;">
             Don't have an account? <a href="#" onclick="showSignup()" style="color: #4facfe;">Sign up</a>
         </p>
-        <div id="loginLoading" class="loading hidden">Logging in...</div>
     </div>
 
     <!-- Signup Screen -->
     <div id="signupScreen" class="login-container hidden">
         <h1>📝 Sign Up</h1>
+        <div id="signupMessage"></div>
         <div class="form-group" style="margin-bottom: 15px;">
             <label for="signupEmail">Email</label>
             <input type="email" id="signupEmail" placeholder="Enter your email" required>
@@ -397,11 +442,10 @@
             <label for="signupPassword">Password</label>
             <input type="password" id="signupPassword" placeholder="Create a password (min 6 characters)" required>
         </div>
-        <button class="btn" onclick="signup()">Create Account</button>
+        <button class="btn" id="signupBtn" onclick="signup()">Create Account</button>
         <p style="margin-top: 15px; font-size: 14px; color: #666;">
             Already have an account? <a href="#" onclick="showLogin()" style="color: #4facfe;">Login</a>
         </p>
-        <div id="signupLoading" class="loading hidden">Creating account...</div>
     </div>
 
     <!-- Main App -->
@@ -527,7 +571,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // REPLACE WITH YOUR SUPABASE CREDENTIALS
+        // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
         const SUPABASE_URL = 'https://bdpmbvjirurjredngoxq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA';
         
@@ -549,29 +593,78 @@
             'Vacation': '#85C1E9'
         };
 
-        // Initialize Supabase
-        function initSupabase() {
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') {
-                alert('Please configure your Supabase credentials first!');
-                return false;
+        // Initialize app when page loads
+        window.addEventListener('load', () => {
+            initializeApp();
+        });
+
+        // Initialize Supabase and check auth state
+        function initializeApp() {
+            if (SUPABASE_URL === 'https://bdpmbvjirurjredngoxq.supabase.co' || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA') {
+                console.error('Supabase credentials not configured');
+                return;
             }
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            return true;
+
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Hide setup warning
+                document.getElementById('setupWarning').style.display = 'none';
+                
+                // Check if user is already logged in
+                checkAuthState();
+                
+                // Set default date
+                setDefaultDate();
+                
+                // Listen for auth changes
+                supabase.auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_IN' && session) {
+                        currentUser = session.user;
+                        showMainApp();
+                        loadExpenses();
+                    } else if (event === 'SIGNED_OUT') {
+                        currentUser = null;
+                        transactions = [];
+                        showLogin();
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error initializing Supabase:', error);
+                showMessage('loginMessage', 'Error connecting to database. Please check your Supabase configuration.', 'error');
+            }
+        }
+
+        async function checkAuthState() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    currentUser = session.user;
+                    showMainApp();
+                    await loadExpenses();
+                } else {
+                    showLogin();
+                }
+            } catch (error) {
+                console.error('Error checking auth state:', error);
+                showLogin();
+            }
         }
 
         // Authentication functions
         async function login() {
-            if (!initSupabase()) return;
-            
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             if (!email || !password) {
-                alert('Please enter both email and password');
+                showMessage('loginMessage', 'Please enter both email and password', 'error');
                 return;
             }
             
-            document.getElementById('loginLoading').classList.remove('hidden');
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
             
             try {
                 const { data, error } = await supabase.auth.signInWithPassword({
@@ -581,33 +674,35 @@
                 
                 if (error) throw error;
                 
-                currentUser = data.user;
-                showMainApp();
-                await loadExpenses();
+                clearMessage('loginMessage');
+                // Auth state change will handle the rest
+                
             } catch (error) {
-                alert('Login failed: ' + error.message);
+                console.error('Login error:', error);
+                showMessage('loginMessage', 'Login failed: ' + error.message, 'error');
             } finally {
-                document.getElementById('loginLoading').classList.add('hidden');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
             }
         }
 
         async function signup() {
-            if (!initSupabase()) return;
-            
-            const email = document.getElementById('signupEmail').value;
+            const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
             
             if (!email || !password) {
-                alert('Please enter both email and password');
+                showMessage('signupMessage', 'Please enter both email and password', 'error');
                 return;
             }
             
             if (password.length < 6) {
-                alert('Password must be at least 6 characters long');
+                showMessage('signupMessage', 'Password must be at least 6 characters long', 'error');
                 return;
             }
             
-            document.getElementById('signupLoading').classList.remove('hidden');
+            const signupBtn = document.getElementById('signupBtn');
+            signupBtn.disabled = true;
+            signupBtn.textContent = 'Creating Account...';
             
             try {
                 const { data, error } = await supabase.auth.signUp({
@@ -617,39 +712,71 @@
                 
                 if (error) throw error;
                 
-                alert('Account created successfully! Please check your email to confirm your account, then login.');
-                showLogin();
+                if (data.user && !data.user.email_confirmed_at) {
+                    showMessage('signupMessage', 'Account created! Please check your email to confirm your account, then login.', 'success');
+                } else {
+                    showMessage('signupMessage', 'Account created successfully! You can now login.', 'success');
+                }
+                
+                // Clear form
+                document.getElementById('signupEmail').value = '';
+                document.getElementById('signupPassword').value = '';
+                
             } catch (error) {
-                alert('Signup failed: ' + error.message);
+                console.error('Signup error:', error);
+                showMessage('signupMessage', 'Signup failed: ' + error.message, 'error');
             } finally {
-                document.getElementById('signupLoading').classList.add('hidden');
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Create Account';
             }
         }
 
         async function logout() {
-            await supabase.auth.signOut();
-            currentUser = null;
-            transactions = [];
-            showLogin();
+            try {
+                await supabase.auth.signOut();
+                // Auth state change will handle the rest
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
         }
 
         function showLogin() {
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('signupScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.add('hidden');
+            clearMessages();
         }
 
         function showSignup() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('signupScreen').classList.remove('hidden');
             document.getElementById('mainApp').classList.add('hidden');
+            clearMessages();
         }
 
         function showMainApp() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('signupScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
-            initializeApp();
+            clearMessages();
+            setDefaultDate();
+        }
+
+        // Message display functions
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.className = type === 'error' ? 'error-message' : 'success-message';
+            element.textContent = message;
+        }
+
+        function clearMessage(elementId) {
+            document.getElementById(elementId).textContent = '';
+            document.getElementById(elementId).className = '';
+        }
+
+        function clearMessages() {
+            clearMessage('loginMessage');
+            clearMessage('signupMessage');
         }
 
         // Database functions
@@ -667,6 +794,8 @@
                 
                 transactions = data || [];
                 updateDisplay();
+                console.log('Expenses loaded:', transactions.length);
+                
             } catch (error) {
                 console.error('Error loading expenses:', error);
                 alert('Error loading expenses: ' + error.message);
@@ -780,6 +909,11 @@
             setDefaultDate();
         }
 
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('expenseDate').value = today;
+        }
+
         // Display and filtering functions
         function populateYearOptions() {
             const yearSelect = document.getElementById('yearSelect');
@@ -891,3 +1025,151 @@
             if (nonZeroCategories.length === 0) {
                 summaryContainer.innerHTML = '<div class="no-data">No expenses recorded for this period</div>';
                 updateChart([], []);
+                return;
+            }
+            
+            summaryContainer.innerHTML = nonZeroCategories.map(([category, amount]) => `
+                <div class="category-item" style="border-left-color: ${categoryColors[category]}">
+                    <div class="category-name">${category}</div>
+                    <div class="category-amount">₹${amount.toFixed(2)}</div>
+                </div>
+            `).join('');
+            
+            const labels = nonZeroCategories.map(([category]) => category);
+            const data = nonZeroCategories.map(([, amount]) => amount);
+            updateChart(labels, data);
+        }
+
+        function updateChart(labels, data) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            
+            if (expenseChart) {
+                expenseChart.destroy();
+            }
+            
+            if (labels.length === 0) {
+                expenseChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['No Data'],
+                        datasets: [{
+                            data: [1],
+                            backgroundColor: ['#e0e0e0'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            const colors = labels.map(label => categoryColors[label] || '#999');
+            
+            expenseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Export functions
+        function exportToCSV() {
+            if (transactions.length === 0) {
+                alert('No expenses to export');
+                return;
+            }
+            
+            const csvContent = [
+                ['Date', 'Description', 'Category', 'Amount'],
+                ...transactions.map(t => [
+                    new Date(t.date).toLocaleDateString(),
+                    t.description,
+                    t.category,
+                    t.amount.toFixed(2)
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function exportToExcel() {
+            if (transactions.length === 0) {
+                alert('No expenses to export');
+                return;
+            }
+            
+            const ws_data = [
+                ['Date', 'Description', 'Category', 'Amount'],
+                ...transactions.map(t => [
+                    new Date(t.date).toLocaleDateString(),
+                    t.description,
+                    t.category,
+                    t.amount
+                ])
+            ];
+            
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+            
+            XLSX.writeFile(wb, `expenses_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // Handle enter key for login forms
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (!document.getElementById('loginScreen').classList.contains('hidden')) {
+                    login();
+                } else if (!document.getElementById('signupScreen').classList.contains('hidden')) {
+                    signup();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -403,13 +402,42 @@
 <body>
     <!-- Setup Warning -->
     <div id="setupWarning" class="setup-warning">
-        <h3>⚠️ Setup Required</h3>
-        <p>Please configure your Supabase credentials in the JavaScript section below. You'll need to:</p>
-        <ol style="margin: 10px 0; padding-left: 20px;">
-            <li>Create a Supabase project at <a href="https://supabase.com" target="_blank">supabase.com</a></li>
-            <li>Create an 'expenses' table with the required columns</li>
-            <li>Replace the placeholder URLs with your actual Supabase credentials</li>
-        </ol>
+        <h3>🔧 Database Setup Status</h3>
+        <div id="setupStatus">
+            <p>Checking database connection...</p>
+        </div>
+        <details style="margin-top: 15px;">
+            <summary style="cursor: pointer; font-weight: bold;">📋 Setup Checklist</summary>
+            <div style="margin-top: 10px; padding-left: 15px;">
+                <p><strong>If you see errors, please verify:</strong></p>
+                <ol style="margin: 10px 0; padding-left: 20px;">
+                    <li>✅ Supabase project is active</li>
+                    <li>❓ Create the 'expenses' table with this SQL:</li>
+                </ol>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 12px; overflow-x: auto;">CREATE TABLE expenses (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  category TEXT NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+CREATE POLICY "Users can view their own expenses" 
+ON expenses FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own expenses" 
+ON expenses FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own expenses" 
+ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
+            </div>
+        </details>
     </div>
 
     <!-- Login Screen -->
@@ -571,10 +599,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-        // Example format:
-        // const SUPABASE_URL = 'https://your-project-id.supabase.co';
-        // const SUPABASE_ANON_KEY = 'your-anon-key-here';
+        // ⚠️ YOUR SUPABASE CREDENTIALS
         const SUPABASE_URL = 'https://bdpmbvjirurjredngoxq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA';
         
@@ -604,7 +629,7 @@
         });
 
         // Initialize Supabase and check auth state
-        function initializeApp() {
+        async function initializeApp() {
             console.log('Initializing app...');
             
             // Check if Supabase is loaded
@@ -614,15 +639,8 @@
                 return;
             }
 
-            // Check if credentials are configured
-            if (SUPABASE_URL === 'https://bdpmbvjirurjredngoxq.supabase.co' || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkcG1idmppcnVyanJlZG5nb3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDQ5NTIsImV4cCI6MjA2OTg4MDk1Mn0.k6TLtkaxrKRh7lOm4udLn7JIyW8x3AF2DvqGHrHpGRA') {
-                console.error('Supabase credentials not configured');
-                showMessage('loginMessage', 'Database not configured. Please set up your Supabase credentials.', 'error');
-                return;
-            }
-
             try {
-                console.log('Creating Supabase client...');
+                console.log('Creating Supabase client with URL:', SUPABASE_URL);
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
                 if (!supabase || !supabase.auth) {
@@ -630,7 +648,10 @@
                 }
                 
                 isSupabaseReady = true;
-                console.log('Supabase client created successfully');
+                console.log('✅ Supabase client created successfully');
+                
+                // Test database connection
+                await testDatabaseConnection();
                 
                 // Hide setup warning
                 const setupWarning = document.getElementById('setupWarning');
@@ -662,6 +683,45 @@
                 console.error('Error initializing Supabase:', error);
                 showMessage('loginMessage', 'Error connecting to database: ' + error.message, 'error');
                 isSupabaseReady = false;
+            }
+        }
+
+        // Test database connection and table structure
+        async function testDatabaseConnection() {
+            try {
+                console.log('🔍 Testing database connection...');
+                
+                // Test basic connection by trying to read from expenses table
+                const { data, error } = await supabase
+                    .from('expenses')
+                    .select('id')
+                    .limit(1);
+                
+                if (error) {
+                    console.error('Database connection test failed:', error);
+                    
+                    if (error.message.includes('relation "expenses" does not exist')) {
+                        console.error('❌ Expenses table does not exist');
+                        showMessage('loginMessage', 'Database table "expenses" not found. Please create it in your Supabase dashboard.', 'error');
+                        return false;
+                    } else if (error.message.includes('JWT')) {
+                        console.error('❌ Authentication token issue');
+                        showMessage('loginMessage', 'Invalid Supabase credentials. Please check your URL and API key.', 'error');
+                        return false;
+                    } else {
+                        console.error('❌ Database error:', error.message);
+                        showMessage('loginMessage', 'Database connection error: ' + error.message, 'error');
+                        return false;
+                    }
+                } else {
+                    console.log('✅ Database connection successful');
+                    console.log('✅ Expenses table exists and is accessible');
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Connection test failed:', error);
+                showMessage('loginMessage', 'Failed to test database connection: ' + error.message, 'error');
+                return false;
             }
         }
 

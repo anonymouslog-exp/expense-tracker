@@ -1298,7 +1298,15 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             document.querySelectorAll('.chart-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            event.target.classList.add('active');
+            
+            // Find the clicked tab and make it active
+            const clickedTab = Array.from(document.querySelectorAll('.chart-tab')).find(tab => 
+                (chartType === 'category' && tab.textContent.includes('Category')) ||
+                (chartType === 'monthly' && tab.textContent.includes('Monthly'))
+            );
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
             
             // Show/hide chart containers
             if (chartType === 'category') {

@@ -805,6 +805,30 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
 
+        // Number formatting functions
+        function formatCurrency(amount) {
+            return '₹' + amount.toLocaleString('en-IN', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+        }
+
+        function formatLargeNumber(amount) {
+            if (amount >= 100000) {
+                // Convert to lakhs
+                return '₹' + (amount / 100000).toFixed(1) + 'L';
+            } else if (amount >= 1000) {
+                // Convert to thousands
+                return '₹' + (amount / 1000).toFixed(1) + 'K';
+            } else {
+                return '₹' + amount.toFixed(2);
+            }
+        }
+
+        function formatNumberWithCommas(number) {
+            return number.toLocaleString('en-IN');
+        }
+
         // Initialize app when page loads
         window.addEventListener('load', () => {
             // Wait a bit for Supabase to load
@@ -1514,7 +1538,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
 
         function updateDisplay() {
             const totalExpenses = transactions.reduce((sum, t) => sum + t.amount, 0);
-            document.getElementById('totalExpenses').textContent = `₹${totalExpenses.toFixed(2)}`;
+            document.getElementById('totalExpenses').textContent = formatLargeNumber(totalExpenses);
 
             // Calculate this month's expenses
             const currentMonth = new Date().getMonth();
@@ -1526,7 +1550,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 })
                 .reduce((sum, t) => sum + t.amount, 0);
             
-            document.getElementById('monthlyExpenses').textContent = `₹${monthlyExpenses.toFixed(2)}`;
+            document.getElementById('monthlyExpenses').textContent = formatLargeNumber(monthlyExpenses);
 
             updateTransactionList();
             updateCategorySummary();
@@ -1694,25 +1718,83 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
 
         function updateMonthlyChart() {
             const selectedYear = parseInt(document.getElementById('yearSelect').value);
-            const yearTransactions = transactions.filter(t => 
-                new Date(t.date).getFullYear() === selectedYear
-            );
+            const periodType = document.getElementById('periodType').value;
             
-            // Calculate monthly totals
-            const monthlyTotals = Array(12).fill(0);
-            yearTransactions.forEach(transaction => {
-                const month = new Date(transaction.date).getMonth();
-                monthlyTotals[month] += transaction.amount;
-            });
+            let chartData, chartLabels, chartTitle, averageLine;
             
-            // Update monthly totals display
-            const monthlyTotalsContainer = document.getElementById('monthlyTotals');
-            monthlyTotalsContainer.innerHTML = monthNames.map((monthName, index) => `
-                <div class="monthly-total-item">
-                    <div class="monthly-total-month">${monthName.substring(0, 3)}</div>
-                    <div class="monthly-total-amount">₹${monthlyTotals[index].toFixed(0)}</div>
-                </div>
-            `).join('');
+            if (periodType === 'annual') {
+                // Show monthly data for the selected year
+                const yearTransactions = transactions.filter(t => 
+                    new Date(t.date).getFullYear() === selectedYear
+                );
+                
+                // Calculate monthly totals
+                const monthlyTotals = Array(12).fill(0);
+                yearTransactions.forEach(transaction => {
+                    const month = new Date(transaction.date).getMonth();
+                    monthlyTotals[month] += transaction.amount;
+                });
+                
+                chartData = monthlyTotals;
+                chartLabels = monthNames;
+                chartTitle = `${selectedYear} Monthly Expenses`;
+                
+                // Calculate average (total expenses / 12 months)
+                const totalExpenses = monthlyTotals.reduce((sum, amount) => sum + amount, 0);
+                averageLine = totalExpenses / 12;
+                
+                // Update monthly totals display
+                const monthlyTotalsContainer = document.getElementById('monthlyTotals');
+                monthlyTotalsContainer.innerHTML = monthNames.map((monthName, index) => `
+                    <div class="monthly-total-item">
+                        <div class="monthly-total-month">${monthName.substring(0, 3)}</div>
+                        <div class="monthly-total-amount">₹${monthlyTotals[index].toFixed(0)}</div>
+                    </div>
+                `).join('');
+                
+            } else {
+                // Show daily data for the selected month
+                const selectedMonth = parseInt(document.getElementById('monthSelect').value);
+                const monthTransactions = transactions.filter(t => {
+                    const date = new Date(t.date);
+                    return date.getFullYear() === selectedYear && date.getMonth() === selectedMonth;
+                });
+                
+                // Get number of days in the selected month
+                const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+                const dailyTotals = Array(daysInMonth).fill(0);
+                
+                monthTransactions.forEach(transaction => {
+                    const day = new Date(transaction.date).getDate() - 1; // 0-indexed
+                    dailyTotals[day] += transaction.amount;
+                });
+                
+                chartData = dailyTotals;
+                chartLabels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+                chartTitle = `${monthNames[selectedMonth]} ${selectedYear} Daily Expenses`;
+                
+                // Calculate average (total expenses / days in month)
+                const totalExpenses = dailyTotals.reduce((sum, amount) => sum + amount, 0);
+                averageLine = totalExpenses / daysInMonth;
+                
+                // Update daily totals display (show only non-zero days)
+                const monthlyTotalsContainer = document.getElementById('monthlyTotals');
+                const nonZeroDays = dailyTotals
+                    .map((amount, index) => ({ day: index + 1, amount }))
+                    .filter(item => item.amount > 0)
+                    .slice(0, 31); // Limit display
+                
+                if (nonZeroDays.length > 0) {
+                    monthlyTotalsContainer.innerHTML = nonZeroDays.map(item => `
+                        <div class="monthly-total-item">
+                            <div class="monthly-total-month">Day ${item.day}</div>
+                            <div class="monthly-total-amount">₹${item.amount.toFixed(0)}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    monthlyTotalsContainer.innerHTML = '<div class="no-data">No expenses recorded this month</div>';
+                }
+            }
             
             // Update chart
             const ctx = document.getElementById('monthlyChart').getContext('2d');
@@ -1724,27 +1806,56 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             monthlyChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: monthNames,
+                    labels: chartLabels,
                     datasets: [{
-                        label: `${selectedYear} Monthly Expenses`,
-                        data: monthlyTotals,
+                        label: chartTitle,
+                        data: chartData,
                         backgroundColor: 'rgba(79, 172, 254, 0.6)',
                         borderColor: 'rgba(79, 172, 254, 1)',
                         borderWidth: 2,
                         borderRadius: 4
+                    }, {
+                        label: `Average (₹${averageLine.toFixed(2)})`,
+                        data: Array(chartData.length).fill(averageLine),
+                        type: 'line',
+                        backgroundColor: 'transparent',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                filter: function(legendItem, chartData) {
+                                    // Show legend for average line
+                                    return legendItem.datasetIndex === 1;
+                                }
+                            }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `₹${context.raw.toFixed(2)}`;
+                                    if (context.datasetIndex === 0) {
+                                        return `Expenses: ₹${context.raw.toFixed(2)}`;
+                                    } else {
+                                        return `Average: ₹${context.raw.toFixed(2)}`;
+                                    }
                                 }
                             }
                         }
@@ -1756,6 +1867,14 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                                 callback: function(value) {
                                     return '₹' + value.toFixed(0);
                                 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
                     }

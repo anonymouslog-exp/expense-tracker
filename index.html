@@ -805,7 +805,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
 
-        // Number formatting functions
+        // Enhanced number formatting functions with comma separators
         function formatCurrency(amount) {
             return '₹' + amount.toLocaleString('en-IN', { 
                 minimumFractionDigits: 2, 
@@ -815,18 +815,37 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
 
         function formatLargeNumber(amount) {
             if (amount >= 100000) {
-                // Convert to lakhs
+                // Convert to lakhs (100,000)
                 return '₹' + (amount / 100000).toFixed(1) + 'L';
             } else if (amount >= 1000) {
                 // Convert to thousands
                 return '₹' + (amount / 1000).toFixed(1) + 'K';
             } else {
-                return '₹' + amount.toFixed(2);
+                return '₹' + amount.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
             }
         }
 
         function formatNumberWithCommas(number) {
-            return number.toLocaleString('en-IN');
+            return number.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatChartNumber(amount) {
+            if (amount >= 100000) {
+                return '₹' + (amount / 100000).toFixed(1) + 'L';
+            } else if (amount >= 1000) {
+                return '₹' + (amount / 1000).toFixed(1) + 'K';
+            } else {
+                return '₹' + amount.toLocaleString('en-IN', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            }
         }
 
         // Initialize app when page loads
@@ -1246,7 +1265,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                         <td>${new Date(row.date).toLocaleDateString()}</td>
                         <td>${row.description}</td>
                         <td>${row.category}</td>
-                        <td>₹${row.amount.toFixed(2)}</td>
+                        <td>${formatCurrency(row.amount)}</td>
                     </tr>
                 `;
             });
@@ -1578,7 +1597,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <div class="transaction-amount expense">
-                            -₹${transaction.amount.toFixed(2)}
+                            -${formatCurrency(transaction.amount)}
                         </div>
                         <button class="delete-btn" onclick="deleteTransaction(${transaction.id})">Delete</button>
                     </div>
@@ -1634,7 +1653,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             summaryContainer.innerHTML = nonZeroCategories.map(([category, amount]) => `
                 <div class="category-item" style="border-left-color: ${categoryColors[category]}">
                     <div class="category-name">${category}</div>
-                    <div class="category-amount">₹${amount.toFixed(2)}</div>
+                    <div class="category-amount">${formatCurrency(amount)}</div>
                 </div>
             `).join('');
             
@@ -1654,7 +1673,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             
             if (labels.length === 0) {
                 expenseChart = new Chart(ctx, {
-                    type: 'doughnut',
+                    type: 'bar',
                     data: {
                         labels: ['No Data'],
                         datasets: [{
@@ -1664,6 +1683,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                         }]
                     },
                     options: {
+                        indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
@@ -1679,7 +1699,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             const colors = labels.map(label => categoryColors[label] || '#999');
             
             expenseChart = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
@@ -1690,15 +1710,12 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     }]
                 },
                 options: {
+                    indexAxis: 'y', // This makes it horizontal
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true
-                            }
+                            display: false
                         },
                         tooltip: {
                             callbacks: {
@@ -1707,8 +1724,26 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                                     const value = context.raw || 0;
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                                    return `${label}: ${formatCurrency(value)} (${percentage}%)`;
                                 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatChartNumber(value);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
                             }
                         }
                     }
@@ -1748,7 +1783,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 monthlyTotalsContainer.innerHTML = monthNames.map((monthName, index) => `
                     <div class="monthly-total-item">
                         <div class="monthly-total-month">${monthName.substring(0, 3)}</div>
-                        <div class="monthly-total-amount">₹${monthlyTotals[index].toFixed(0)}</div>
+                        <div class="monthly-total-amount">${formatChartNumber(monthlyTotals[index])}</div>
                     </div>
                 `).join('');
                 
@@ -1788,7 +1823,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     monthlyTotalsContainer.innerHTML = nonZeroDays.map(item => `
                         <div class="monthly-total-item">
                             <div class="monthly-total-month">Day ${item.day}</div>
-                            <div class="monthly-total-amount">₹${item.amount.toFixed(0)}</div>
+                            <div class="monthly-total-amount">${formatChartNumber(item.amount)}</div>
                         </div>
                     `).join('');
                 } else {
@@ -1796,7 +1831,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 }
             }
             
-            // Update chart
+            // Update chart - changed to horizontal bar chart
             const ctx = document.getElementById('monthlyChart').getContext('2d');
             
             if (monthlyChart) {
@@ -1815,7 +1850,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                         borderWidth: 2,
                         borderRadius: 4
                     }, {
-                        label: `Average (₹${averageLine.toFixed(2)})`,
+                        label: `Average (${formatChartNumber(averageLine)})`,
                         data: Array(chartData.length).fill(averageLine),
                         type: 'line',
                         backgroundColor: 'transparent',
@@ -1829,6 +1864,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     }]
                 },
                 options: {
+                    indexAxis: 'y', // This makes it horizontal
                     responsive: true,
                     maintainAspectRatio: false,
                     interaction: {
@@ -1852,27 +1888,27 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                             callbacks: {
                                 label: function(context) {
                                     if (context.datasetIndex === 0) {
-                                        return `Expenses: ₹${context.raw.toFixed(2)}`;
+                                        return `Expenses: ${formatCurrency(context.raw)}`;
                                     } else {
-                                        return `Average: ₹${context.raw.toFixed(2)}`;
+                                        return `Average: ${formatCurrency(context.raw)}`;
                                     }
                                 }
                             }
                         }
                     },
                     scales: {
-                        y: {
+                        x: {
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '₹' + value.toFixed(0);
+                                    return formatChartNumber(value);
                                 }
                             },
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.1)'
                             }
                         },
-                        x: {
+                        y: {
                             grid: {
                                 display: false
                             }

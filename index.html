@@ -317,75 +317,66 @@
             color: #f44336;
         }
 
-        .chart-container {
+        /* Updated chart styles for side-by-side layout */
+        .charts-container {
             background: white;
             border-radius: 15px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            text-align: center;
             margin-bottom: 20px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            text-align: center;
         }
 
         .chart-container h3 {
             color: #333;
             margin-bottom: 15px;
             font-size: 1.2em;
+            border-bottom: 2px solid #4facfe;
+            padding-bottom: 10px;
         }
 
-        .chart-tabs {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-            gap: 10px;
-        }
-
-        .chart-tab {
-            padding: 8px 16px;
-            border: 2px solid #e1e1e1;
-            background: white;
-            color: #666;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .chart-tab.active {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            border-color: #4facfe;
-        }
-
-        .chart-tab:hover:not(.active) {
-            border-color: #4facfe;
-            color: #4facfe;
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            margin-bottom: 15px;
         }
 
         .monthly-totals {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
         }
 
         .monthly-total-item {
             background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px;
+            border-radius: 6px;
+            padding: 8px;
             text-align: center;
             border-left: 3px solid #4facfe;
+            font-size: 0.8em;
         }
 
         .monthly-total-month {
-            font-size: 0.8em;
+            font-size: 0.75em;
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .monthly-total-amount {
             font-weight: bold;
             color: #333;
-            font-size: 0.9em;
+            font-size: 0.8em;
         }
 
         .no-data {
@@ -499,6 +490,13 @@
             font-weight: bold;
         }
 
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
         @media (max-width: 768px) {
             .container, .login-container {
                 margin: 10px;
@@ -533,12 +531,12 @@
                 width: 100px;
             }
 
-            .chart-tabs {
-                flex-wrap: wrap;
+            .monthly-totals {
+                grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
             }
 
-            .monthly-totals {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            .charts-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -649,7 +647,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             <!-- Category Summary Section -->
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                    <h2>Expense Summary by Category</h2>
+                    <h2>Expense Analysis Dashboard</h2>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <div class="form-group" style="margin: 0; min-width: 120px;">
                             <label for="periodType" style="font-size: 0.9em; margin-bottom: 3px;">Period</label>
@@ -660,13 +658,13 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                         </div>
                         <div class="form-group" style="margin: 0; min-width: 100px;">
                             <label for="yearSelect" style="font-size: 0.9em; margin-bottom: 3px;">Year</label>
-                            <select id="yearSelect" onchange="updateCategorySummary()" style="margin: 0;">
+                            <select id="yearSelect" onchange="updateAnalysis()" style="margin: 0;">
                                 <!-- Years will be populated dynamically -->
                             </select>
                         </div>
                         <div class="form-group" id="monthSelectGroup" style="margin: 0; min-width: 120px; display: none;">
                             <label for="monthSelect" style="font-size: 0.9em; margin-bottom: 3px;">Month</label>
-                            <select id="monthSelect" onchange="updateCategorySummary()" style="margin: 0;">
+                            <select id="monthSelect" onchange="updateAnalysis()" style="margin: 0;">
                                 <option value="0">January</option>
                                 <option value="1">February</option>
                                 <option value="2">March</option>
@@ -688,17 +686,25 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     <!-- Category summary will be populated here -->
                 </div>
                 
-                <div class="chart-container">
-                    <div class="chart-tabs">
-                        <div class="chart-tab active" onclick="switchChart('category')">Category Breakdown</div>
-                        <div class="chart-tab" onclick="switchChart('monthly')">Monthly Trend</div>
-                    </div>
-                    <div id="categoryChartContainer">
-                        <canvas id="expenseChart" width="400" height="200"></canvas>
-                    </div>
-                    <div id="monthlyChartContainer" class="hidden">
-                        <canvas id="monthlyChart" width="400" height="200"></canvas>
-                        <div id="monthlyTotals" class="monthly-totals"></div>
+                <!-- Dual Charts Container -->
+                <div class="charts-container">
+                    <div class="charts-grid">
+                        <!-- Category Pie Chart -->
+                        <div class="chart-container">
+                            <h3>📊 Category Breakdown</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="categoryPieChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Monthly Bar Chart -->
+                        <div class="chart-container">
+                            <h3>📈 Monthly Expenses</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="monthlyBarChart"></canvas>
+                            </div>
+                            <div id="monthlyTotals" class="monthly-totals"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -781,11 +787,10 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
         let supabase = null;
         let currentUser = null;
         let transactions = [];
-        let expenseChart = null;
-        let monthlyChart = null;
+        let categoryPieChart = null;
+        let monthlyBarChart = null;
         let isSupabaseReady = false;
         let csvData = [];
-        let activeChart = 'category';
 
         const categoryColors = {
             'Food & Dine': '#FF6B6B',
@@ -826,13 +831,6 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     maximumFractionDigits: 2
                 });
             }
-        }
-
-        function formatNumberWithCommas(number) {
-            return number.toLocaleString('en-IN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
         }
 
         function formatChartNumber(amount) {
@@ -1333,35 +1331,6 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             csvData = [];
         }
 
-        // Chart switching function
-        function switchChart(chartType) {
-            activeChart = chartType;
-            
-            // Update tab styles
-            document.querySelectorAll('.chart-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Find the clicked tab and make it active
-            const clickedTab = Array.from(document.querySelectorAll('.chart-tab')).find(tab => 
-                (chartType === 'category' && tab.textContent.includes('Category')) ||
-                (chartType === 'monthly' && tab.textContent.includes('Monthly'))
-            );
-            if (clickedTab) {
-                clickedTab.classList.add('active');
-            }
-            
-            // Show/hide chart containers
-            if (chartType === 'category') {
-                document.getElementById('categoryChartContainer').classList.remove('hidden');
-                document.getElementById('monthlyChartContainer').classList.add('hidden');
-            } else {
-                document.getElementById('categoryChartContainer').classList.add('hidden');
-                document.getElementById('monthlyChartContainer').classList.remove('hidden');
-                updateMonthlyChart();
-            }
-        }
-
         // Database functions
         async function loadExpenses() {
             if (!currentUser || !isSupabaseReady || !supabase) return;
@@ -1549,10 +1518,13 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 monthSelectGroup.style.display = 'none';
             }
             
+            updateAnalysis();
+        }
+
+        function updateAnalysis() {
             updateCategorySummary();
-            if (activeChart === 'monthly') {
-                updateMonthlyChart();
-            }
+            updateCategoryPieChart();
+            updateMonthlyBarChart();
         }
 
         function updateDisplay() {
@@ -1574,10 +1546,8 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             updateTransactionList();
             updateCategorySummary();
             populateYearOptions();
-            
-            if (activeChart === 'monthly') {
-                updateMonthlyChart();
-            }
+            updateCategoryPieChart();
+            updateMonthlyBarChart();
         }
 
         function updateTransactionList() {
@@ -1646,7 +1616,6 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
             
             if (nonZeroCategories.length === 0) {
                 summaryContainer.innerHTML = '<div class="no-data">No expenses recorded for this period</div>';
-                updateChart([], []);
                 return;
             }
             
@@ -1656,34 +1625,43 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     <div class="category-amount">${formatCurrency(amount)}</div>
                 </div>
             `).join('');
-            
-            if (activeChart === 'category') {
-                const labels = nonZeroCategories.map(([category]) => category);
-                const data = nonZeroCategories.map(([, amount]) => amount);
-                updateChart(labels, data);
-            }
         }
 
-        function updateChart(labels, data) {
-            const ctx = document.getElementById('expenseChart').getContext('2d');
+        function updateCategoryPieChart() {
+            const filteredTransactions = getFilteredTransactions();
+            const categorySummary = {};
             
-            if (expenseChart) {
-                expenseChart.destroy();
+            Object.keys(categoryColors).forEach(category => {
+                categorySummary[category] = 0;
+            });
+            
+            filteredTransactions.forEach(transaction => {
+                if (categorySummary.hasOwnProperty(transaction.category)) {
+                    categorySummary[transaction.category] += transaction.amount;
+                }
+            });
+            
+            const nonZeroCategories = Object.entries(categorySummary)
+                .filter(([category, amount]) => amount > 0)
+                .sort((a, b) => b[1] - a[1]);
+            
+            const ctx = document.getElementById('categoryPieChart').getContext('2d');
+            
+            if (categoryPieChart) {
+                categoryPieChart.destroy();
             }
             
-            if (labels.length === 0) {
-                expenseChart = new Chart(ctx, {
-                    type: 'bar',
+            if (nonZeroCategories.length === 0) {
+                categoryPieChart = new Chart(ctx, {
+                    type: 'pie',
                     data: {
                         labels: ['No Data'],
                         datasets: [{
                             data: [1],
-                            backgroundColor: ['#e0e0e0'],
-                            borderWidth: 0
+                            backgroundColor: ['#e0e0e0']
                         }]
                     },
                     options: {
-                        indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
@@ -1696,10 +1674,12 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 return;
             }
             
+            const labels = nonZeroCategories.map(([category]) => category);
+            const data = nonZeroCategories.map(([, amount]) => amount);
             const colors = labels.map(label => categoryColors[label] || '#999');
             
-            expenseChart = new Chart(ctx, {
-                type: 'bar',
+            categoryPieChart = new Chart(ctx, {
+                type: 'pie',
                 data: {
                     labels: labels,
                     datasets: [{
@@ -1710,12 +1690,18 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // This makes it horizontal
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true,
+                                font: {
+                                    size: 11
+                                }
+                            }
                         },
                         tooltip: {
                             callbacks: {
@@ -1728,176 +1714,62 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                                 }
                             }
                         }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return formatChartNumber(value);
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
                     }
                 }
             });
         }
 
-        function updateMonthlyChart() {
+        function updateMonthlyBarChart() {
             const selectedYear = parseInt(document.getElementById('yearSelect').value);
-            const periodType = document.getElementById('periodType').value;
             
-            let chartData, chartLabels, chartTitle, averageLine;
+            // Always show monthly data for the selected year
+            const yearTransactions = transactions.filter(t => 
+                new Date(t.date).getFullYear() === selectedYear
+            );
             
-            if (periodType === 'annual') {
-                // Show monthly data for the selected year
-                const yearTransactions = transactions.filter(t => 
-                    new Date(t.date).getFullYear() === selectedYear
-                );
-                
-                // Calculate monthly totals
-                const monthlyTotals = Array(12).fill(0);
-                yearTransactions.forEach(transaction => {
-                    const month = new Date(transaction.date).getMonth();
-                    monthlyTotals[month] += transaction.amount;
-                });
-                
-                chartData = monthlyTotals;
-                chartLabels = monthNames;
-                chartTitle = `${selectedYear} Monthly Expenses`;
-                
-                // Calculate average (total expenses / 12 months)
-                const totalExpenses = monthlyTotals.reduce((sum, amount) => sum + amount, 0);
-                averageLine = totalExpenses / 12;
-                
-                // Update monthly totals display
-                const monthlyTotalsContainer = document.getElementById('monthlyTotals');
-                monthlyTotalsContainer.innerHTML = monthNames.map((monthName, index) => `
-                    <div class="monthly-total-item">
-                        <div class="monthly-total-month">${monthName.substring(0, 3)}</div>
-                        <div class="monthly-total-amount">${formatChartNumber(monthlyTotals[index])}</div>
-                    </div>
-                `).join('');
-                
-            } else {
-                // Show daily data for the selected month
-                const selectedMonth = parseInt(document.getElementById('monthSelect').value);
-                const monthTransactions = transactions.filter(t => {
-                    const date = new Date(t.date);
-                    return date.getFullYear() === selectedYear && date.getMonth() === selectedMonth;
-                });
-                
-                // Get number of days in the selected month
-                const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-                const dailyTotals = Array(daysInMonth).fill(0);
-                
-                monthTransactions.forEach(transaction => {
-                    const day = new Date(transaction.date).getDate() - 1; // 0-indexed
-                    dailyTotals[day] += transaction.amount;
-                });
-                
-                chartData = dailyTotals;
-                chartLabels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
-                chartTitle = `${monthNames[selectedMonth]} ${selectedYear} Daily Expenses`;
-                
-                // Calculate average (total expenses / days in month)
-                const totalExpenses = dailyTotals.reduce((sum, amount) => sum + amount, 0);
-                averageLine = totalExpenses / daysInMonth;
-                
-                // Update daily totals display (show only non-zero days)
-                const monthlyTotalsContainer = document.getElementById('monthlyTotals');
-                const nonZeroDays = dailyTotals
-                    .map((amount, index) => ({ day: index + 1, amount }))
-                    .filter(item => item.amount > 0)
-                    .slice(0, 31); // Limit display
-                
-                if (nonZeroDays.length > 0) {
-                    monthlyTotalsContainer.innerHTML = nonZeroDays.map(item => `
-                        <div class="monthly-total-item">
-                            <div class="monthly-total-month">Day ${item.day}</div>
-                            <div class="monthly-total-amount">${formatChartNumber(item.amount)}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    monthlyTotalsContainer.innerHTML = '<div class="no-data">No expenses recorded this month</div>';
-                }
+            // Calculate monthly totals
+            const monthlyTotals = Array(12).fill(0);
+            yearTransactions.forEach(transaction => {
+                const month = new Date(transaction.date).getMonth();
+                monthlyTotals[month] += transaction.amount;
+            });
+            
+            const ctx = document.getElementById('monthlyBarChart').getContext('2d');
+            
+            if (monthlyBarChart) {
+                monthlyBarChart.destroy();
             }
             
-            // Update chart - changed to horizontal bar chart
-            const ctx = document.getElementById('monthlyChart').getContext('2d');
-            
-            if (monthlyChart) {
-                monthlyChart.destroy();
-            }
-            
-            monthlyChart = new Chart(ctx, {
+            monthlyBarChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: chartLabels,
+                    labels: monthNames.map(name => name.substring(0, 3)), // Short month names
                     datasets: [{
-                        label: chartTitle,
-                        data: chartData,
+                        label: `${selectedYear} Monthly Expenses`,
+                        data: monthlyTotals,
                         backgroundColor: 'rgba(79, 172, 254, 0.6)',
                         borderColor: 'rgba(79, 172, 254, 1)',
                         borderWidth: 2,
-                        borderRadius: 4
-                    }, {
-                        label: `Average (${formatChartNumber(averageLine)})`,
-                        data: Array(chartData.length).fill(averageLine),
-                        type: 'line',
-                        backgroundColor: 'transparent',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        fill: false,
-                        tension: 0
+                        borderRadius: 6
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // This makes it horizontal
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                filter: function(legendItem, chartData) {
-                                    // Show legend for average line
-                                    return legendItem.datasetIndex === 1;
-                                }
-                            }
+                            display: false
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    if (context.datasetIndex === 0) {
-                                        return `Expenses: ${formatCurrency(context.raw)}`;
-                                    } else {
-                                        return `Average: ${formatCurrency(context.raw)}`;
-                                    }
+                                    return `Expenses: ${formatCurrency(context.raw)}`;
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: {
+                        y: {
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
@@ -1908,7 +1780,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                                 color: 'rgba(0, 0, 0, 0.1)'
                             }
                         },
-                        y: {
+                        x: {
                             grid: {
                                 display: false
                             }
@@ -1916,6 +1788,23 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                     }
                 }
             });
+            
+            // Update monthly totals display
+            const monthlyTotalsContainer = document.getElementById('monthlyTotals');
+            const nonZeroMonths = monthlyTotals
+                .map((amount, index) => ({ month: monthNames[index].substring(0, 3), amount }))
+                .filter(item => item.amount > 0);
+            
+            if (nonZeroMonths.length > 0) {
+                monthlyTotalsContainer.innerHTML = nonZeroMonths.map(item => `
+                    <div class="monthly-total-item">
+                        <div class="monthly-total-month">${item.month}</div>
+                        <div class="monthly-total-amount">${formatChartNumber(item.amount)}</div>
+                    </div>
+                `).join('');
+            } else {
+                monthlyTotalsContainer.innerHTML = '<div class="no-data">No expenses recorded this year</div>';
+            }
         }
 
         // Export functions

@@ -419,6 +419,27 @@
             margin-bottom: 15px;
         }
 
+        .chart-total {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chart-total-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .chart-total-amount {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
         .monthly-totals {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
@@ -966,6 +987,10 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                             <div class="chart-wrapper">
                                 <canvas id="categoryPieChart"></canvas>
                             </div>
+                            <div id="categoryTotal" class="chart-total">
+                                <div class="chart-total-label">Total Expenses</div>
+                                <div class="chart-total-amount">₹0.00</div>
+                            </div>
                         </div>
                         
                         <!-- Monthly Bar Chart -->
@@ -1048,6 +1073,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -1920,6 +1946,22 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                 .filter(([category, amount]) => amount > 0)
                 .sort((a, b) => b[1] - a[1]);
             
+            // Update the total display
+            const total = nonZeroCategories.reduce((sum, [, amount]) => sum + amount, 0);
+            const totalElement = document.getElementById('categoryTotal');
+            const periodType = document.getElementById('periodType').value;
+            const selectedYear = document.getElementById('yearSelect').value;
+            let periodLabel = selectedYear;
+            
+            if (periodType === 'monthly') {
+                const selectedMonth = document.getElementById('monthSelect').value;
+                const monthName = monthNames[parseInt(selectedMonth)];
+                periodLabel = `${monthName} ${selectedYear}`;
+            }
+            
+            totalElement.querySelector('.chart-total-label').textContent = `Total Expenses (${periodLabel})`;
+            totalElement.querySelector('.chart-total-amount').textContent = formatCurrency(total);
+            
             const ctx = document.getElementById('categoryPieChart').getContext('2d');
             
             if (categoryPieChart) {
@@ -1964,6 +2006,7 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                         borderColor: '#fff'
                     }]
                 },
+                plugins: [ChartDataLabels],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1975,7 +2018,44 @@ ON expenses FOR DELETE USING (auth.uid() = user_id);</pre>
                                 usePointStyle: true,
                                 font: {
                                     size: 11
+                                },
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    
+                                    return data.labels.map((label, index) => {
+                                        const value = data.datasets[0].data[index];
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        
+                                        return {
+                                            text: `${label} (${percentage}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[index],
+                                            pointStyle: 'circle',
+                                            index: index
+                                        };
+                                    });
                                 }
+                            }
+                        },
+                        datalabels: {
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 11
+                            },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                
+                                // Only show percentage if slice is large enough
+                                if (percentage < 5) return '';
+                                
+                                return percentage + '%';
+                            },
+                            display: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100);
+                                return percentage >= 5; // Only show if >= 5%
                             }
                         },
                         tooltip: {
